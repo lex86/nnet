@@ -1,0 +1,9 @@
+{
+    "server_params.host"        : "127.0.0.1",
+    "server_params.port"        : 5000,
+    "server_params.key"         : "key",
+    "nnet_params.layers"        : [768, 500, 400, 10],
+    "nnet_params.activation"    : "sigmoid",
+    "nnet_params.learning_rate" : 0.001,
+    "nnet_params.num_iters"     : 100
+}
