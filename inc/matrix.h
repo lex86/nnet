@@ -8,8 +8,7 @@ class Matrix
 {
 public:
     Matrix(); 
-    Matrix(int num_rows, int num_cols);
-    Matrix(int num_rows, int num_cols, double val);
+    Matrix(int num_rows, int num_cols, double val = 0.0L);
     Matrix(int num_rows, int num_cols, double* data_ptr);
     Matrix(const Matrix& mat);
     Matrix(Matrix&& mat);

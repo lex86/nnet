@@ -1,5 +1,7 @@
 #include <iostream>
+#include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
+#include <boost/log/expressions.hpp>
 #include "nnet_api.h"
 #include "nnet.h"
 #include "layer.h"
@@ -8,9 +10,21 @@
 
 extern "C" {
 
+void init()
+{
+    namespace logging = boost::log;
+    logging::core::get()->set_filter
+        (
+         logging::trivial::severity >= logging::trivial::trace
+        );
+}
+
 NNet* NNet_init(const char* cfg_path)
 {
     try {
+
+       init();
+
        BOOST_LOG_TRIVIAL(trace) << ">> " << __PRETTY_FUNCTION__;
        NNet* obj = new NNet();
        obj->init(cfg_path);
@@ -70,13 +84,26 @@ int NNet_size(NNet* nnet, int* size)
     return 0;
 }
 
-int NNet_get_layer_dims(NNet* nnet, int index, int* in_dim, int* out_dim)
+int NNet_num_iters(NNet* nnet, int* num_iters)
 {
     BOOST_LOG_TRIVIAL(trace) << ">> " << __PRETTY_FUNCTION__;
     try {
-        (nnet->get_layer(index)).get_dims(in_dim, out_dim);
+        *num_iters = nnet->get_num_iters();
     } catch (...) {
-        std::cerr << "Error: NNet_get_layer_dims\n";
+        std::cerr << "Error: NNet_num_iters\n";
+        return -1;
+    }
+    BOOST_LOG_TRIVIAL(trace) << "<< " << __PRETTY_FUNCTION__;
+    return 0;
+}
+
+int NNet_get_dims(NNet* nnet, int size, int* dims)
+{
+    BOOST_LOG_TRIVIAL(trace) << ">> " << __PRETTY_FUNCTION__;
+    try {
+        nnet->get_dims(size, dims);
+    } catch (...) {
+        std::cerr << "Error: NNet_get_dims\n";
         return -1;
     }
     BOOST_LOG_TRIVIAL(trace) << "<< " << __PRETTY_FUNCTION__;
@@ -88,7 +115,7 @@ int NNet_get_layer_params(NNet* nnet, int index, int num_rows, int num_cols, dou
     try {
         Matrix W(num_rows, num_cols, weights);
         Vector b(dim, biases);
-        (nnet->get_layer(index)).get_params(W, b);
+        nnet->get_layer(index)->get_params(W, b);
     } catch (...) {
         std::cerr << "Error: NNet_get_layer_params\n";
         return -1;
@@ -116,7 +143,7 @@ int NNet_set_layer_params(NNet* nnet, int index, int num_rows, int num_cols, dou
     try {
         Matrix W(num_rows, num_cols, weights);
         Vector b(dim, biases);
-        (nnet->get_layer(index)).set_params(W, b);
+        nnet->get_layer(index)->set_params(W, b);
     } catch (...) {
         std::cerr << "Error: NNet_set_layer_params\n";
         return -1;

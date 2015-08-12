@@ -8,13 +8,14 @@ class Vector
 {
 public:
     Vector();
-    Vector(int dim);
+    Vector(int dim, double value = 0.0L);
     Vector(int dim, double* data_ptr);
     ~Vector();
     Vector(const Vector& vec);
     Vector(Vector&& vec);
     Vector& operator=(const Vector& vec);
     Vector& operator=(Vector&& vec);
+
     double* data() { return m_data; }
     const double* data() const { return m_data; }
     int dim() const { return m_dim; }

@@ -1,4 +1,7 @@
 #include <boost/log/trivial.hpp>
+#include <iostream>
+#include <istream>
+#include <ostream>
 #include <string>
 #include <algorithm>
 #include <cblas.h>
@@ -12,16 +15,14 @@ Matrix::~Matrix()
     if (m_owner) delete [] m_data;
 }
 
-Matrix::Matrix(int num_rows, int num_cols) : m_data(nullptr), m_num_rows(0), m_num_cols(0), m_owner(true) {
-    m_num_rows = num_rows;
-    m_num_cols = num_cols;
+Matrix::Matrix(int num_rows, int num_cols, double value) : m_data(nullptr), m_num_rows(num_rows), m_num_cols(num_cols), m_owner(true) {
     m_data = new double[m_num_rows*m_num_cols];
+    for (int i = 0; i < m_num_rows * m_num_cols; i++) {
+        m_data[i] = value;
+    }
 }
 
-Matrix::Matrix(int num_rows, int num_cols, double* data_ptr) : m_data(nullptr), m_num_rows(0), m_num_cols(0), m_owner(false)  {
-    m_num_rows = num_rows;
-    m_num_cols = num_cols;
-    m_data = data_ptr;
+Matrix::Matrix(int num_rows, int num_cols, double* data_ptr) : m_data(data_ptr), m_num_rows(num_rows), m_num_cols(num_cols), m_owner(false)  {
 }
 
 Matrix::Matrix(const Matrix& mat) : m_data(nullptr), m_num_rows(0), m_num_cols(0), m_owner(true) 
@@ -42,6 +43,7 @@ Matrix::Matrix(Matrix&& mat) : m_data(nullptr), m_num_rows(0), m_num_cols(0), m_
     mat.m_num_rows = 0;
     mat.m_num_cols = 0;
     mat.m_data = nullptr;
+    mat.m_owner = true;
 }
 
 Matrix& Matrix::operator=(const Matrix& mat)
@@ -49,10 +51,11 @@ Matrix& Matrix::operator=(const Matrix& mat)
     if (this != &mat) { 
         if (m_num_rows != mat.num_rows() || 
                 m_num_cols != mat.num_cols()) {
-            delete [] m_data;
+            if (m_owner) delete [] m_data;
             m_num_rows = mat.m_num_rows;
             m_num_cols = mat.m_num_cols;
             m_data = new double[m_num_rows * m_num_cols];
+            m_owner = true;
         }
         std::copy(mat.m_data, mat.m_data + m_num_rows * m_num_cols, m_data);
     }
@@ -62,13 +65,15 @@ Matrix& Matrix::operator=(const Matrix& mat)
 Matrix& Matrix::operator=(Matrix&& mat)
 {
     if (this != &mat) { 
-        delete [] m_data;
+        if (m_owner) delete [] m_data;
         m_num_rows = mat.m_num_rows;
         m_num_cols = mat.m_num_cols;
         m_data = mat.m_data;
+        m_owner = mat.m_owner;
         mat.m_num_rows = 0;
         mat.m_num_cols = 0;
         mat.m_data = nullptr;
+        mat.m_owner = true;
     }
     return *this;
 }
@@ -77,7 +82,9 @@ Matrix& Matrix::operator=(Matrix&& mat)
 void Matrix::add_mat(double alpha, const Matrix& A, double beta)
 {
     BOOST_LOG_TRIVIAL(trace) << ">> " << __PRETTY_FUNCTION__;
-    // TODO: check dimensions
+    if (m_num_rows != A.num_rows() ||
+            m_num_cols != A.num_cols())
+        throw std::string("Error");
     int num_elems = m_num_rows*m_num_cols;
     for (int i = 0; i < num_elems; i++) {
         m_data[i] = alpha * A.data()[i] + beta * m_data[i];
@@ -88,10 +95,12 @@ void Matrix::add_mat(double alpha, const Matrix& A, double beta)
 void Matrix::mul_mat(double alpha, const Matrix& A)
 {
     BOOST_LOG_TRIVIAL(trace) << ">> " << __PRETTY_FUNCTION__;
-    // TODO: check dimensions
+    if (m_num_rows != A.num_rows() ||
+            m_num_cols != A.num_cols())
+        throw std::string("Error");
     int num_elems = m_num_rows*m_num_cols;
     for (int i = 0; i < num_elems; i++) {
-        m_data[i] *= alpha* A.data()[i];
+        m_data[i] *= alpha * A.data()[i];
     }
     BOOST_LOG_TRIVIAL(trace) << "<< " << __PRETTY_FUNCTION__;
 }
@@ -117,9 +126,8 @@ void Matrix::add_mat_matT(double alpha, const Matrix& A, const Matrix& B, double
     BOOST_LOG_TRIVIAL(trace) << ">> " << __PRETTY_FUNCTION__;
     if (m_num_rows != A.num_rows() ||
             m_num_cols != B.num_rows() ||
-            A.num_cols() != B.num_cols()) {
+            A.num_cols() != B.num_cols()) 
         throw std::string("Error");
-    }
     cblas_dgemm(CBLAS_ORDER::CblasRowMajor, CBLAS_TRANSPOSE::CblasNoTrans,
                  CBLAS_TRANSPOSE::CblasTrans, m_num_rows, m_num_cols,
                  A.num_cols(), alpha, A.data(),
@@ -161,7 +169,6 @@ void Matrix::add_vec_to_rows(double alpha, const Vector& v, double beta)
 void Matrix::apply_sigmoid()
 {
     BOOST_LOG_TRIVIAL(trace) << ">> " << __PRETTY_FUNCTION__;
-    // TODO: limit double value
     int num_elems = m_num_rows * m_num_cols;
     for (int i = 0; i < num_elems; i++) {
         m_data[i] = 1.0L / (1.0L + exp(-m_data[i]));
@@ -171,7 +178,6 @@ void Matrix::apply_sigmoid()
 void Matrix::apply_diffsigmoid()
 {
     BOOST_LOG_TRIVIAL(trace) << ">> " << __PRETTY_FUNCTION__;
-    // TODO: limit double value
     int num_elems = m_num_rows * m_num_cols;
     for (int i = 0; i < num_elems; i++) {
         m_data[i] = 1.0L / (1.0L + exp(-m_data[i]));
